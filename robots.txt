@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://mohadmahad.github.io/sitemap.xml
