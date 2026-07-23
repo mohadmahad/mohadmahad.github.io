@@ -18,13 +18,9 @@
     <!-- Favicon for all browsers -->
     <link rel="icon" href="https://www.norielix.com/favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="https://www.norielix.com/favicon.ico" type="image/x-icon">
-    
-    <!-- Additional favicon formats for better compatibility -->
     <link rel="apple-touch-icon" sizes="180x180" href="https://www.norielix.com/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="https://www.norielix.com/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="https://www.norielix.com/favicon-16x16.png">
-    
-    <!-- Web App Manifest -->
     <link rel="manifest" href="https://www.norielix.com/site.webmanifest">
     
     <!-- Google Search specific tags -->
@@ -474,6 +470,110 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
+    <!-- ============================================================
+    DEBUG PANEL - Shows on-screen console for iPad
+    ============================================================ -->
+    <div id="debug-panel" style="
+        position: fixed; 
+        bottom: 10px; 
+        right: 10px; 
+        background: rgba(0,0,0,0.95); 
+        color: #0f0; 
+        padding: 15px; 
+        border-radius: 10px; 
+        font-family: monospace; 
+        font-size: 12px; 
+        max-width: 90%; 
+        max-height: 50vh; 
+        overflow: auto; 
+        z-index: 99999;
+        border: 2px solid #0f0;
+        display: none;
+    " id="debug-panel">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <strong style="color:#0f0;">🔍 Debug Console</strong>
+            <button onclick="document.getElementById('debug-panel').style.display='none'" style="background:red;color:white;border:none;padding:2px 10px;border-radius:5px;font-size:16px;">✕</button>
+        </div>
+        <div id="debug-output"></div>
+    </div>
+    
+    <button onclick="document.getElementById('debug-panel').style.display='block'" style="
+        position: fixed; 
+        bottom: 10px; 
+        right: 10px; 
+        background: #1e40af; 
+        color: white; 
+        border: none; 
+        padding: 12px 18px; 
+        border-radius: 50px; 
+        z-index: 99998;
+        font-size: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-weight: bold;
+    ">🐛 Debug</button>
+
+    <script>
+        // ============================================================
+        // DEBUG FUNCTION - Shows messages on screen
+        // ============================================================
+        function debugLog(message, isError = false) {
+            const panel = document.getElementById('debug-panel');
+            const output = document.getElementById('debug-output');
+            
+            if (!panel || !output) {
+                // If debug panel doesn't exist yet, create it
+                const body = document.body;
+                if (body) {
+                    const newPanel = document.createElement('div');
+                    newPanel.id = 'debug-panel';
+                    newPanel.style.cssText = 'position:fixed;bottom:10px;right:10px;background:rgba(0,0,0,0.95);color:#0f0;padding:15px;border-radius:10px;font-family:monospace;font-size:12px;max-width:90%;max-height:50vh;overflow:auto;z-index:99999;border:2px solid #0f0;display:block;';
+                    newPanel.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="color:#0f0;">🔍 Debug Console</strong><button onclick="this.parentElement.parentElement.style.display=\'none\'" style="background:red;color:white;border:none;padding:2px 10px;border-radius:5px;font-size:16px;">✕</button></div><div id="debug-output"></div>';
+                    body.appendChild(newPanel);
+                    return debugLog(message, isError);
+                }
+                return;
+            }
+            
+            panel.style.display = 'block';
+            const timestamp = new Date().toLocaleTimeString();
+            const color = isError ? '#ff6b6b' : '#69db7c';
+            const line = document.createElement('div');
+            line.style.cssText = `padding: 3px 0; border-bottom: 1px solid #333; color: ${color}; font-size: 11px; word-wrap: break-word;`;
+            line.textContent = `[${timestamp}] ${message}`;
+            output.appendChild(line);
+            
+            // Keep only last 50 messages
+            while (output.children.length > 50) {
+                output.removeChild(output.firstChild);
+            }
+            
+            // Auto-scroll
+            output.scrollTop = output.scrollHeight;
+            
+            // Also log to console if available
+            if (console && console.log) {
+                console.log(message);
+            }
+        }
+
+        // Override console.log to show on screen too
+        const originalLog = console.log;
+        console.log = function() {
+            const args = Array.from(arguments);
+            debugLog(args.join(' '));
+            originalLog.apply(console, arguments);
+        };
+        
+        console.error = function() {
+            const args = Array.from(arguments);
+            debugLog('❌ ' + args.join(' '), true);
+            originalLog.apply(console, arguments);
+        };
+
+        debugLog('🚀 Debug panel initialized!');
+        debugLog('📱 Running on: ' + (navigator.userAgent || 'Unknown'));
+    </script>
+
     <script>
         // ============================================================
         // CONFIGURATION
@@ -481,6 +581,10 @@
         const PROXY_URL = 'https://www.norielix.com/api/secure-proxy.php';
         const NOTICE_API_URL = 'https://www.norielix.com/admin/api/get-notices.php';
         const POST_ID = 60;
+        
+        debugLog('📡 Config loaded: POST_ID=' + POST_ID);
+        debugLog('🔗 Proxy URL: ' + PROXY_URL);
+        debugLog('🔗 Notice URL: ' + NOTICE_API_URL);
         
         // ============================================================
         // GLOBALS
@@ -491,16 +595,20 @@
         const totalNotices = 3;
         let noticesLoaded = { top: false, center: false, bottom: false };
 
+        debugLog('⚙️ Globals initialized');
+
         // ============================================================
         // CORE FUNCTIONS
         // ============================================================
         
         function displayProfile(data) {
+            debugLog('📄 displayProfile called');
             const loading = document.getElementById('loading');
             const content = document.getElementById('content');
             const cacheInfo = document.getElementById('cache-info');
             
             if (!data || !data.title || !data.content) {
+                debugLog('❌ Invalid data received', true);
                 loading.innerHTML = `
                     <div class="error-container">
                         <div class="icon">⚠️</div>
@@ -511,6 +619,8 @@
                 loading.style.display = 'block';
                 return;
             }
+            
+            debugLog('✅ Profile data valid: ' + data.title);
             
             if (jsonpTimeout) {
                 clearTimeout(jsonpTimeout);
@@ -543,13 +653,23 @@
             cacheInfo.innerHTML = '';
             isDataLoaded = true;
             
+            debugLog('📦 Notice containers created');
+            
+            // Check if containers exist
+            debugLog('🔍 Container check:');
+            debugLog('  - notice-top: ' + !!document.getElementById('notice-top'));
+            debugLog('  - notice-center: ' + !!document.getElementById('notice-center'));
+            debugLog('  - notice-bottom: ' + !!document.getElementById('notice-bottom'));
+            
             // Small delay to ensure DOM is ready
             setTimeout(function() {
+                debugLog('⏰ Loading notices after 500ms delay...');
                 loadNotices();
-            }, 100);
+            }, 500);
         }
 
         function loadNotices() {
+            debugLog('🔄 loadNotices called');
             noticeCount = 0;
             noticesLoaded = { top: false, center: false, bottom: false };
             const positions = ['top', 'center', 'bottom'];
@@ -559,7 +679,10 @@
         }
 
         function loadNotice(position) {
+            debugLog('📡 Loading notice for: ' + position);
             const url = NOTICE_API_URL + '?post_id=' + POST_ID + '&position=' + position + '&callback=handleNoticeData&t=' + Date.now();
+            
+            debugLog('🔗 URL: ' + url);
             
             const script = document.createElement('script');
             script.id = 'notice-script-' + position;
@@ -567,7 +690,7 @@
             script.dataset.position = position;
             
             script.onerror = function() {
-                console.log('⚠️ Failed to load notice for:', position);
+                debugLog('⚠️ Failed to load notice for: ' + position, true);
                 const container = document.getElementById('notice-' + position);
                 if (container) {
                     container.className = 'notice-placeholder';
@@ -578,18 +701,30 @@
             };
             
             document.head.appendChild(script);
+            debugLog('✅ Script added for: ' + position);
         }
 
         function handleNoticeData(data) {
-            console.log('🔔 Notice data received:', data ? 'yes' : 'no');
+            debugLog('🔔 handleNoticeData called!');
+            debugLog('📊 Data received: ' + (data ? 'yes' : 'no'));
+            if (data) {
+                debugLog('📊 Success: ' + data.success);
+                debugLog('📊 Has HTML: ' + !!data.html);
+                if (data.html) {
+                    debugLog('📊 HTML length: ' + data.html.length);
+                }
+            }
             
             // Find which position this notice is for
             let targetPosition = null;
             const scripts = document.querySelectorAll('[id^="notice-script-"]');
             
+            debugLog('📜 Found ' + scripts.length + ' notice scripts');
+            
             for (const script of scripts) {
                 if (script.dataset.position && !noticesLoaded[script.dataset.position]) {
                     targetPosition = script.dataset.position;
+                    debugLog('🎯 Target position found: ' + targetPosition);
                     break;
                 }
             }
@@ -600,6 +735,7 @@
                 for (const pos of positions) {
                     if (!noticesLoaded[pos]) {
                         targetPosition = pos;
+                        debugLog('🎯 Using fallback position: ' + targetPosition);
                         break;
                     }
                 }
@@ -608,20 +744,44 @@
             
             const container = document.getElementById('notice-' + targetPosition);
             if (!container) {
-                console.log('❌ Container not found for:', targetPosition);
+                debugLog('❌ Container not found for: ' + targetPosition, true);
+                // Try to create the container
+                const noticesContainer = document.getElementById('notices-container');
+                if (noticesContainer) {
+                    debugLog('🛠️ Creating missing container: notice-' + targetPosition);
+                    const newContainer = document.createElement('div');
+                    newContainer.id = 'notice-' + targetPosition;
+                    newContainer.className = '';
+                    noticesContainer.appendChild(newContainer);
+                    // Try again with the new container
+                    const retryContainer = document.getElementById('notice-' + targetPosition);
+                    if (retryContainer) {
+                        debugLog('✅ Container created successfully');
+                        if (data && data.success === true && data.html && data.html.trim() !== '') {
+                            retryContainer.innerHTML = data.html;
+                            retryContainer.className = '';
+                            attachNoticeCloseHandlers();
+                            debugLog('✅ Notice inserted into newly created container!');
+                        }
+                    }
+                }
                 noticesLoaded[targetPosition] = true;
                 checkNoticesComplete();
                 return;
             }
             
+            debugLog('📦 Container found for: ' + targetPosition);
+            
             // Handle the response
             if (data && data.success === true && data.html && data.html.trim() !== '') {
-                console.log('✅ Inserting notice for:', targetPosition);
+                debugLog('✅ Inserting notice for: ' + targetPosition);
+                debugLog('📄 HTML length: ' + data.html.length);
                 container.innerHTML = data.html;
                 container.className = '';
                 attachNoticeCloseHandlers();
+                debugLog('✅ Notice rendered successfully!');
             } else {
-                console.log('ℹ️ No notice for position:', targetPosition);
+                debugLog('ℹ️ No notice for position: ' + targetPosition);
                 container.className = 'notice-placeholder';
                 container.innerHTML = '';
             }
@@ -631,6 +791,7 @@
         }
 
         function attachNoticeCloseHandlers() {
+            debugLog('🔗 Attaching close handlers');
             const container = document.getElementById('notices-container');
             if (!container) return;
             
@@ -647,23 +808,34 @@
                 if (notice) {
                     notice.classList.add('nx-hide');
                     e.preventDefault();
+                    debugLog('❌ Notice dismissed');
                 }
             }
         }
 
         function checkNoticesComplete() {
             noticeCount++;
+            debugLog('📊 Notice count: ' + noticeCount + '/' + totalNotices);
             if (noticeCount >= totalNotices) {
-                console.log('✅ All notices processed');
+                debugLog('✅ All notices processed');
+                // Check if any notices were actually rendered
+                const bottom = document.getElementById('notice-bottom');
+                if (bottom && bottom.innerHTML) {
+                    debugLog('✅ Bottom notice has content: ' + bottom.innerHTML.substring(0, 100) + '...');
+                } else {
+                    debugLog('⚠️ Bottom notice is empty', true);
+                }
                 setTimeout(attachNoticeCloseHandlers, 100);
             }
         }
 
         function handleProfileData(data) {
+            debugLog('📥 Profile data received');
             displayProfile(data);
         }
 
         function loadProfile() {
+            debugLog('🚀 loadProfile called');
             const loading = document.getElementById('loading');
             const content = document.getElementById('content');
             const cacheInfo = document.getElementById('cache-info');
@@ -691,7 +863,10 @@
             script.id = 'jsonp-script';
             script.src = PROXY_URL + '?callback=handleProfileData&t=' + Date.now();
             
+            debugLog('🔗 Profile URL: ' + script.src);
+            
             script.onerror = function() {
+                debugLog('❌ Profile load failed', true);
                 if (jsonpTimeout) {
                     clearTimeout(jsonpTimeout);
                     jsonpTimeout = null;
@@ -709,6 +884,7 @@
             
             jsonpTimeout = setTimeout(function() {
                 if (!isDataLoaded) {
+                    debugLog('⏱️ Profile load timed out', true);
                     loading.innerHTML = `
                         <div class="error-container">
                             <div class="icon">⏱️</div>
@@ -722,6 +898,7 @@
             }, 10000);
             
             document.head.appendChild(script);
+            debugLog('✅ Profile script added');
         }
 
         // ============================================================
@@ -769,6 +946,7 @@
         // ============================================================
         
         window.nxDismissNotice = function(noticeId, element) {
+            debugLog('❌ Dismissing notice: ' + noticeId);
             // For modal/center notices
             const overlay = document.getElementById('nxModal_' + noticeId);
             if (overlay) {
@@ -788,6 +966,7 @@
             const notice = button.closest('.nx-notice');
             if (notice) {
                 notice.classList.add('nx-hide');
+                debugLog('❌ Notice closed');
             }
         };
 
@@ -796,6 +975,7 @@
         // ============================================================
         
         document.addEventListener('DOMContentLoaded', function() {
+            debugLog('📄 DOM loaded');
             loadProfile();
             updateFooterDates();
             adjustBodyPadding();
