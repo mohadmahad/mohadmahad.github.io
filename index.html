@@ -476,7 +476,7 @@
 
     <script>
         // ============================================================
-        // CONFIGURATION - FIXED PATHS
+        // CONFIGURATION
         // ============================================================
         const PROXY_URL = 'https://www.norielix.com/api/secure-proxy.php';
         const NOTICE_API_URL = 'https://www.norielix.com/admin/api/get-notices.php';
@@ -489,6 +489,7 @@
         let isDataLoaded = false;
         let noticeCount = 0;
         const totalNotices = 3;
+        let noticesLoaded = { top: false, center: false, bottom: false };
 
         // ============================================================
         // CORE FUNCTIONS
@@ -526,6 +527,7 @@
             }
             html += `<div class="post-content">${data.content}</div>`;
             
+            // Create notice containers
             html += `
                 <div id="notices-container">
                     <div id="notice-top" class="notice-placeholder"></div>
@@ -539,14 +541,17 @@
             content.style.display = 'block';
             
             cacheInfo.innerHTML = '';
-            
             isDataLoaded = true;
             
-            loadNotices();
+            // Small delay to ensure DOM is ready
+            setTimeout(function() {
+                loadNotices();
+            }, 100);
         }
 
         function loadNotices() {
             noticeCount = 0;
+            noticesLoaded = { top: false, center: false, bottom: false };
             const positions = ['top', 'center', 'bottom'];
             positions.forEach(position => {
                 loadNotice(position);
@@ -554,7 +559,6 @@
         }
 
         function loadNotice(position) {
-            // Use the dedicated notice API endpoint with JSONP callback
             const url = NOTICE_API_URL + '?post_id=' + POST_ID + '&position=' + position + '&callback=handleNoticeData&t=' + Date.now();
             
             const script = document.createElement('script');
@@ -563,11 +567,13 @@
             script.dataset.position = position;
             
             script.onerror = function() {
+                console.log('⚠️ Failed to load notice for:', position);
                 const container = document.getElementById('notice-' + position);
                 if (container) {
                     container.className = 'notice-placeholder';
                     container.innerHTML = '';
                 }
+                noticesLoaded[position] = true;
                 checkNoticesComplete();
             };
             
@@ -575,44 +581,52 @@
         }
 
         function handleNoticeData(data) {
+            console.log('🔔 Notice data received:', data ? 'yes' : 'no');
+            
             // Find which position this notice is for
             let targetPosition = null;
             const scripts = document.querySelectorAll('[id^="notice-script-"]');
+            
             for (const script of scripts) {
-                if (script.dataset.position) {
+                if (script.dataset.position && !noticesLoaded[script.dataset.position]) {
                     targetPosition = script.dataset.position;
                     break;
                 }
             }
             
             if (!targetPosition) {
+                // Check which positions haven't loaded yet
                 const positions = ['top', 'center', 'bottom'];
                 for (const pos of positions) {
-                    const container = document.getElementById('notice-' + pos);
-                    if (container && container.className === 'notice-placeholder') {
+                    if (!noticesLoaded[pos]) {
                         targetPosition = pos;
                         break;
                     }
                 }
-                if (!targetPosition) targetPosition = 'top';
+                if (!targetPosition) targetPosition = 'bottom';
             }
             
             const container = document.getElementById('notice-' + targetPosition);
             if (!container) {
+                console.log('❌ Container not found for:', targetPosition);
+                noticesLoaded[targetPosition] = true;
                 checkNoticesComplete();
                 return;
             }
             
-            // Handle the response from get-notices.php
-            if (data && data.success === true && data.html) {
+            // Handle the response
+            if (data && data.success === true && data.html && data.html.trim() !== '') {
+                console.log('✅ Inserting notice for:', targetPosition);
                 container.innerHTML = data.html;
                 container.className = '';
                 attachNoticeCloseHandlers();
             } else {
+                console.log('ℹ️ No notice for position:', targetPosition);
                 container.className = 'notice-placeholder';
                 container.innerHTML = '';
             }
             
+            noticesLoaded[targetPosition] = true;
             checkNoticesComplete();
         }
 
@@ -620,7 +634,6 @@
             const container = document.getElementById('notices-container');
             if (!container) return;
             
-            // Remove existing listener to avoid duplicates
             container.removeEventListener('click', handleNoticeClick);
             container.addEventListener('click', handleNoticeClick);
         }
@@ -641,6 +654,7 @@
         function checkNoticesComplete() {
             noticeCount++;
             if (noticeCount >= totalNotices) {
+                console.log('✅ All notices processed');
                 setTimeout(attachNoticeCloseHandlers, 100);
             }
         }
