@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>About Mohammad Mahad | Founder, Norielix </title>
+    <title>About Mohammad Mahad | Founder, Norielix</title>
     <meta name="description" content="Mohammad Mahad is the Founder of Norielix, a unified digital ecosystem integrating cloud services, enterprise IT, and secure web infrastructure. He combines advanced technologies with robust engineering practices to build scalable, automated, and intelligently governed platforms focused on operational reliability.">
     <meta name="keywords" content="Mohammad Mahad, Norielix, Founder of Norielix, Norielix Cloud Services, NCS, enterprise web infrastructure, cloud hosting platforms, unified digital ecosystem, web security,">
     <meta name="robots" content="index,follow">
@@ -250,6 +250,79 @@
         .nx-notice-danger { border-left: 4px solid #dc2626; }
         .nx-notice-danger .nx-notice-icon { color: #dc2626; }
         .nx-notice.nx-hide { display: none !important; }
+        
+        /* Modal overlay styles for center notices */
+        .nx-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: nx-modal-in 0.3s ease;
+        }
+        .nx-modal-overlay.nx-blur-bg {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        @keyframes nx-modal-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .nx-modal-box {
+            background: #ffffff;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            border-left: 4px solid var(--primary-light);
+        }
+        .nx-modal-box.nx-notice-success { border-left-color: #16a34a; }
+        .nx-modal-box.nx-notice-warning { border-left-color: #d97706; }
+        .nx-modal-box.nx-notice-danger { border-left-color: #dc2626; }
+        .nx-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .nx-modal-icon {
+            font-size: 24px;
+            color: var(--primary-light);
+        }
+        .nx-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+            flex: 1;
+        }
+        .nx-modal-close {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+        .nx-modal-close:hover {
+            background: var(--gray-bg);
+            color: var(--text-dark);
+        }
+        .nx-modal-body {
+            color: var(--text-soft);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        .nx-modal-body p:last-child { margin-bottom: 0; }
+        
         .error-container {
             text-align: center;
             padding: 50px 20px;
@@ -346,6 +419,10 @@
             .footer-simple .footer-right {
                 font-size: 13px;
             }
+            .nx-modal-box {
+                padding: 20px;
+                max-width: 95%;
+            }
         }
         @media (max-width: 400px) { 
             .norielix-card { padding: 18px 12px; } 
@@ -398,27 +475,25 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <script>
-        window.nxDismissNotice = function(element) {
-            const notice = element.closest('.nx-notice');
-            if (notice) {
-                notice.classList.add('nx-hide');
-            }
-        };
-
-        window.closeNotice = function(button) {
-            const notice = button.closest('.nx-notice');
-            if (notice) {
-                notice.classList.add('nx-hide');
-            }
-        };
-
-        const PROXY_URL = 'https://www.norielix.com/api/mahad-proxy.php';
+        // ============================================================
+        // CONFIGURATION - FIXED PATHS
+        // ============================================================
+        const PROXY_URL = 'https://www.norielix.com/api/secure-proxy.php';
+        const NOTICE_API_URL = 'https://www.norielix.com/admin/api/get-notices.php';
         const POST_ID = 60;
+        
+        // ============================================================
+        // GLOBALS
+        // ============================================================
         let jsonpTimeout = null;
         let isDataLoaded = false;
         let noticeCount = 0;
         const totalNotices = 3;
 
+        // ============================================================
+        // CORE FUNCTIONS
+        // ============================================================
+        
         function displayProfile(data) {
             const loading = document.getElementById('loading');
             const content = document.getElementById('content');
@@ -479,7 +554,8 @@
         }
 
         function loadNotice(position) {
-            const url = PROXY_URL + '?type=notices&post_id=' + POST_ID + '&position=' + position + '&callback=handleNoticeData&t=' + Date.now();
+            // Use the dedicated notice API endpoint with JSONP callback
+            const url = NOTICE_API_URL + '?post_id=' + POST_ID + '&position=' + position + '&callback=handleNoticeData&t=' + Date.now();
             
             const script = document.createElement('script');
             script.id = 'notice-script-' + position;
@@ -499,23 +575,12 @@
         }
 
         function handleNoticeData(data) {
+            // Find which position this notice is for
             let targetPosition = null;
             const scripts = document.querySelectorAll('[id^="notice-script-"]');
             for (const script of scripts) {
                 if (script.dataset.position) {
-                    if (data && data.position) {
-                        targetPosition = data.position;
-                    } else {
-                        const positions = ['top', 'center', 'bottom'];
-                        for (const pos of positions) {
-                            const container = document.getElementById('notice-' + pos);
-                            if (container && container.className === 'notice-placeholder') {
-                                targetPosition = pos;
-                                break;
-                            }
-                        }
-                        if (!targetPosition) targetPosition = 'top';
-                    }
+                    targetPosition = script.dataset.position;
                     break;
                 }
             }
@@ -538,17 +603,9 @@
                 return;
             }
             
-            let htmlContent = null;
+            // Handle the response from get-notices.php
             if (data && data.success === true && data.html) {
-                htmlContent = data.html;
-            } else if (data && data.content) {
-                htmlContent = data.content;
-            } else if (data && data.notice) {
-                htmlContent = data.notice;
-            }
-            
-            if (htmlContent && htmlContent.trim().length > 0) {
-                container.innerHTML = htmlContent;
+                container.innerHTML = data.html;
                 container.className = '';
                 attachNoticeCloseHandlers();
             } else {
@@ -563,6 +620,7 @@
             const container = document.getElementById('notices-container');
             if (!container) return;
             
+            // Remove existing listener to avoid duplicates
             container.removeEventListener('click', handleNoticeClick);
             container.addEventListener('click', handleNoticeClick);
         }
@@ -606,6 +664,7 @@
                 <div>Loading profile</div>
             `;
             
+            // Remove existing scripts
             document.querySelectorAll('[id^="jsonp-script"]').forEach(el => el.remove());
             document.querySelectorAll('[id^="notice-script-"]').forEach(el => el.remove());
             
@@ -651,6 +710,10 @@
             document.head.appendChild(script);
         }
 
+        // ============================================================
+        // UTILITY FUNCTIONS
+        // ============================================================
+        
         function escapeHtml(unsafe) {
             if (!unsafe) return '';
             return unsafe
@@ -687,6 +750,37 @@
             if (navbar) document.body.style.paddingTop = navbar.offsetHeight + 'px';
         }
 
+        // ============================================================
+        // GLOBAL FUNCTIONS FOR NOTICE DISMISSAL
+        // ============================================================
+        
+        window.nxDismissNotice = function(noticeId, element) {
+            // For modal/center notices
+            const overlay = document.getElementById('nxModal_' + noticeId);
+            if (overlay) {
+                overlay.style.display = 'none';
+                overlay.remove();
+                return;
+            }
+            
+            // For inline notices
+            const notice = element ? element.closest('.nx-notice') : null;
+            if (notice) {
+                notice.classList.add('nx-hide');
+            }
+        };
+
+        window.closeNotice = function(button) {
+            const notice = button.closest('.nx-notice');
+            if (notice) {
+                notice.classList.add('nx-hide');
+            }
+        };
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        
         document.addEventListener('DOMContentLoaded', function() {
             loadProfile();
             updateFooterDates();
